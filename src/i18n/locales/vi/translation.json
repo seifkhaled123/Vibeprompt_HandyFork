@@ -79,6 +79,10 @@
       "gigaam-v3-e2e-ctc": {
         "name": "GigaAM v3",
         "description": "Nhận dạng giọng nói tiếng Nga. Nhanh và chính xác."
+      },
+      "gemini": {
+        "name": "Gemini",
+        "description": "Mô hình đám mây cho prompt kỹ thuật từ tiếng Ả Rập sang tiếng Anh."
       }
     },
     "errors": {
@@ -156,7 +160,20 @@
       },
       "noModelsMatch": "Không có mô hình nào khớp với bộ lọc này.",
       "yourModels": "Mô hình đã tải",
-      "availableModels": "Có sẵn để tải xuống"
+      "availableModels": "Có sẵn để tải xuống",
+      "gemini": {
+        "apiKey": {
+          "title": "Gemini API Key",
+          "description": "Bắt buộc khi Gemini được chọn làm mô hình chuyển đổi.",
+          "placeholder": "Nhập Gemini API key"
+        },
+        "model": {
+          "title": "Mô hình Gemini",
+          "description": "Lấy danh sách mô hình Gemini từ API rồi chọn một mô hình.",
+          "placeholder": "Chọn mô hình Gemini",
+          "fetch": "Lấy mô hình"
+        }
+      }
     },
     "general": {
       "title": "Chung",

@@ -22,7 +22,7 @@ use tauri_plugin_autostart::ManagerExt;
 use crate::settings::{
     self, get_settings, AutoSubmitKey, ClipboardHandling, KeyboardImplementation, LLMPrompt,
     OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme, TypingTool,
-    APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID,
+    APPLE_INTELLIGENCE_PROVIDER_ID,
 };
 use crate::tray;
 
@@ -1064,4 +1064,40 @@ pub fn change_show_tray_icon_setting(app: AppHandle, enabled: bool) -> Result<()
     tray::set_tray_visibility(&app, enabled);
 
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_gemini_api_key_setting(app: AppHandle, api_key: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.gemini_api_key = api_key;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_gemini_model_setting(app: AppHandle, model: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.gemini_model = model;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_gemini_models(app: AppHandle) -> Result<Vec<String>, String> {
+    let mut settings = settings::get_settings(&app);
+    let models = crate::gemini_client::fetch_models(&settings.gemini_api_key).await?;
+    settings.gemini_model_options = models.clone();
+
+    if !settings.gemini_model.is_empty() && !models.contains(&settings.gemini_model) {
+        settings.gemini_model = models
+            .first()
+            .cloned()
+            .unwrap_or_else(|| settings.gemini_model.clone());
+    }
+
+    settings::write_settings(&app, settings);
+    Ok(models)
 }

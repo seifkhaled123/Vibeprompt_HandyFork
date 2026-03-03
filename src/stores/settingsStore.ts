@@ -12,6 +12,7 @@ interface SettingsStore {
   outputDevices: AudioDevice[];
   customSounds: { start: boolean; stop: boolean };
   postProcessModelOptions: Record<string, string[]>;
+  geminiModelOptions: string[];
 
   // Actions
   initialize: () => Promise<void>;
@@ -47,6 +48,10 @@ interface SettingsStore {
   updatePostProcessModel: (providerId: string, model: string) => Promise<void>;
   fetchPostProcessModels: (providerId: string) => Promise<string[]>;
   setPostProcessModelOptions: (providerId: string, models: string[]) => void;
+  updateGeminiApiKey: (apiKey: string) => Promise<void>;
+  updateGeminiModel: (model: string) => Promise<void>;
+  fetchGeminiModels: () => Promise<string[]>;
+  setGeminiModelOptions: (models: string[]) => void;
 
   // Internal state setters
   setSettings: (settings: Settings | null) => void;
@@ -147,6 +152,7 @@ export const useSettingsStore = create<SettingsStore>()(
     outputDevices: [],
     customSounds: { start: false, stop: false },
     postProcessModelOptions: {},
+    geminiModelOptions: [],
 
     // Internal setters
     setSettings: (settings) => set({ settings }),
@@ -159,6 +165,7 @@ export const useSettingsStore = create<SettingsStore>()(
     setAudioDevices: (audioDevices) => set({ audioDevices }),
     setOutputDevices: (outputDevices) => set({ outputDevices }),
     setCustomSounds: (customSounds) => set({ customSounds }),
+    setGeminiModelOptions: (geminiModelOptions) => set({ geminiModelOptions }),
 
     // Getters
     getSetting: (key) => get().settings?.[key],
@@ -537,6 +544,71 @@ export const useSettingsStore = create<SettingsStore>()(
           [providerId]: models,
         },
       })),
+
+    updateGeminiApiKey: async (apiKey) => {
+      const { setUpdating, refreshSettings } = get();
+      const updateKey = "gemini_api_key";
+
+      setUpdating(updateKey, true);
+
+      try {
+        const result = await commands.changeGeminiApiKeySetting(apiKey);
+        if (result.status === "error") {
+          console.error("Failed to update Gemini API key:", result.error);
+          return;
+        }
+
+        set({ geminiModelOptions: [] });
+        await refreshSettings();
+      } catch (error) {
+        console.error("Failed to update Gemini API key:", error);
+      } finally {
+        setUpdating(updateKey, false);
+      }
+    },
+
+    updateGeminiModel: async (model) => {
+      const { setUpdating, refreshSettings } = get();
+      const updateKey = "gemini_model";
+
+      setUpdating(updateKey, true);
+
+      try {
+        const result = await commands.changeGeminiModelSetting(model);
+        if (result.status === "error") {
+          console.error("Failed to update Gemini model:", result.error);
+          return;
+        }
+        await refreshSettings();
+      } catch (error) {
+        console.error("Failed to update Gemini model:", error);
+      } finally {
+        setUpdating(updateKey, false);
+      }
+    },
+
+    fetchGeminiModels: async () => {
+      const { setUpdating, setGeminiModelOptions } = get();
+      const updateKey = "gemini_models_fetch";
+
+      setUpdating(updateKey, true);
+
+      try {
+        const result = await commands.fetchGeminiModels();
+        if (result.status === "ok") {
+          setGeminiModelOptions(result.data);
+          return result.data;
+        }
+
+        console.error("Failed to fetch Gemini models:", result.error);
+        return [];
+      } catch (error) {
+        console.error("Failed to fetch Gemini models:", error);
+        return [];
+      } finally {
+        setUpdating(updateKey, false);
+      }
+    },
 
     // Load default settings from Rust
     loadDefaultSettings: async () => {

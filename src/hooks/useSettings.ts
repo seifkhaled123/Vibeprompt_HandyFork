@@ -11,6 +11,7 @@ interface UseSettingsReturn {
   outputDevices: AudioDevice[];
   audioFeedbackEnabled: boolean;
   postProcessModelOptions: Record<string, string[]>;
+  geminiModelOptions: string[];
 
   // Actions
   updateSetting: <K extends keyof Settings>(
@@ -41,6 +42,9 @@ interface UseSettingsReturn {
   ) => Promise<void>;
   updatePostProcessModel: (providerId: string, model: string) => Promise<void>;
   fetchPostProcessModels: (providerId: string) => Promise<string[]>;
+  updateGeminiApiKey: (apiKey: string) => Promise<void>;
+  updateGeminiModel: (model: string) => Promise<void>;
+  fetchGeminiModels: () => Promise<string[]>;
 }
 
 export const useSettings = (): UseSettingsReturn => {
@@ -61,6 +65,7 @@ export const useSettings = (): UseSettingsReturn => {
     outputDevices: store.outputDevices,
     audioFeedbackEnabled: store.settings?.audio_feedback || false,
     postProcessModelOptions: store.postProcessModelOptions,
+    geminiModelOptions: store.geminiModelOptions,
     updateSetting: store.updateSetting,
     resetSetting: store.resetSetting,
     refreshSettings: store.refreshSettings,
@@ -74,5 +79,8 @@ export const useSettings = (): UseSettingsReturn => {
     updatePostProcessApiKey: store.updatePostProcessApiKey,
     updatePostProcessModel: store.updatePostProcessModel,
     fetchPostProcessModels: store.fetchPostProcessModels,
+    updateGeminiApiKey: store.updateGeminiApiKey,
+    updateGeminiModel: store.updateGeminiModel,
+    fetchGeminiModels: store.fetchGeminiModels,
   };
 };

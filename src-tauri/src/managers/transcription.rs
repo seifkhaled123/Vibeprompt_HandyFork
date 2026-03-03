@@ -366,6 +366,11 @@ impl TranscriptionManager {
                 })?;
                 LoadedEngine::GigaAM(engine)
             }
+            EngineType::Gemini => {
+                return Err(anyhow::anyhow!(
+                    "Gemini is a remote model and does not require local loading"
+                ));
+            }
         };
 
         // Update the current engine and model ID
@@ -400,6 +405,13 @@ impl TranscriptionManager {
 
     /// Kicks off the model loading in a background thread if it's not already loaded
     pub fn initiate_model_load(&self) {
+        let settings = get_settings(&self.app_handle);
+        if let Some(model_info) = self.model_manager.get_model_info(&settings.selected_model) {
+            if matches!(model_info.engine_type, EngineType::Gemini) {
+                return;
+            }
+        }
+
         let mut is_loading = self.is_loading.lock().unwrap();
         if *is_loading || self.is_model_loaded() {
             return;

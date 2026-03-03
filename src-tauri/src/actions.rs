@@ -3,6 +3,7 @@ use crate::apple_intelligence;
 use crate::audio_feedback::{play_feedback_sound, play_feedback_sound_blocking, SoundType};
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::HistoryManager;
+use crate::managers::model::{EngineType, ModelManager};
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, AppSettings, APPLE_INTELLIGENCE_PROVIDER_ID};
 use crate::shortcut;
@@ -420,7 +421,22 @@ impl ShortcutAction for TranscribeAction {
 
                 let transcription_time = Instant::now();
                 let samples_clone = samples.clone(); // Clone for history saving
-                match tm.transcribe(samples) {
+                let settings = get_settings(&ah);
+                let model_manager = ah.state::<Arc<ModelManager>>();
+                let is_gemini_model = model_manager
+                    .get_model_info(&settings.selected_model)
+                    .map(|model| matches!(model.engine_type, EngineType::Gemini))
+                    .unwrap_or(false);
+
+                let transcription_result = if is_gemini_model {
+                    crate::gemini_client::transcribe_audio_to_prompt(&settings, &samples)
+                        .await
+                        .map_err(anyhow::Error::msg)
+                } else {
+                    tm.transcribe(samples)
+                };
+
+                match transcription_result {
                     Ok(transcription) => {
                         debug!(
                             "Transcription completed in {:?}: '{}'",
@@ -428,45 +444,46 @@ impl ShortcutAction for TranscribeAction {
                             transcription
                         );
                         if !transcription.is_empty() {
-                            let settings = get_settings(&ah);
                             let mut final_text = transcription.clone();
                             let mut post_processed_text: Option<String> = None;
                             let mut post_process_prompt: Option<String> = None;
 
-                            // First, check if Chinese variant conversion is needed
-                            if let Some(converted_text) =
-                                maybe_convert_chinese_variant(&settings, &transcription).await
-                            {
-                                final_text = converted_text;
-                            }
-
-                            // Then apply LLM post-processing if this is the post-process hotkey
-                            // Uses final_text which may already have Chinese conversion applied
-                            if post_process {
-                                show_processing_overlay(&ah);
-                            }
-                            let processed = if post_process {
-                                post_process_transcription(&settings, &final_text).await
-                            } else {
-                                None
-                            };
-                            if let Some(processed_text) = processed {
-                                post_processed_text = Some(processed_text.clone());
-                                final_text = processed_text;
-
-                                // Get the prompt that was used
-                                if let Some(prompt_id) = &settings.post_process_selected_prompt_id {
-                                    if let Some(prompt) = settings
-                                        .post_process_prompts
-                                        .iter()
-                                        .find(|p| &p.id == prompt_id)
-                                    {
-                                        post_process_prompt = Some(prompt.prompt.clone());
-                                    }
+                            if !is_gemini_model {
+                                // First, check if Chinese variant conversion is needed
+                                if let Some(converted_text) =
+                                    maybe_convert_chinese_variant(&settings, &transcription).await
+                                {
+                                    final_text = converted_text;
                                 }
-                            } else if final_text != transcription {
-                                // Chinese conversion was applied but no LLM post-processing
-                                post_processed_text = Some(final_text.clone());
+
+                                // Then apply LLM post-processing if this is the post-process hotkey
+                                // Uses final_text which may already have Chinese conversion applied
+                                if post_process {
+                                    show_processing_overlay(&ah);
+                                }
+                                let processed = if post_process {
+                                    post_process_transcription(&settings, &final_text).await
+                                } else {
+                                    None
+                                };
+                                if let Some(processed_text) = processed {
+                                    post_processed_text = Some(processed_text.clone());
+                                    final_text = processed_text;
+
+                                    // Get the prompt that was used
+                                    if let Some(prompt_id) = &settings.post_process_selected_prompt_id {
+                                        if let Some(prompt) = settings
+                                            .post_process_prompts
+                                            .iter()
+                                            .find(|p| &p.id == prompt_id)
+                                        {
+                                            post_process_prompt = Some(prompt.prompt.clone());
+                                        }
+                                    }
+                                } else if final_text != transcription {
+                                    // Chinese conversion was applied but no LLM post-processing
+                                    post_processed_text = Some(final_text.clone());
+                                }
                             }
 
                             // Save to history with post-processed text and prompt

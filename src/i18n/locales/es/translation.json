@@ -79,6 +79,10 @@
       "gigaam-v3-e2e-ctc": {
         "name": "GigaAM v3",
         "description": "Reconocimiento de voz en ruso. Rápido y preciso."
+      },
+      "gemini": {
+        "name": "Gemini",
+        "description": "Modelo en la nube para prompts de ingeniería de árabe a inglés."
       }
     },
     "errors": {
@@ -156,7 +160,20 @@
       },
       "noModelsMatch": "Ningún modelo coincide con este filtro.",
       "yourModels": "Modelos descargados",
-      "availableModels": "Disponibles para descargar"
+      "availableModels": "Disponibles para descargar",
+      "gemini": {
+        "apiKey": {
+          "title": "Clave API de Gemini",
+          "description": "Obligatoria cuando Gemini está seleccionado como modelo de transcripción.",
+          "placeholder": "Introduce la clave API de Gemini"
+        },
+        "model": {
+          "title": "Modelo Gemini",
+          "description": "Obtén modelos Gemini disponibles desde la API y selecciona uno.",
+          "placeholder": "Selecciona un modelo Gemini",
+          "fetch": "Obtener modelos"
+        }
+      }
     },
     "general": {
       "title": "General",

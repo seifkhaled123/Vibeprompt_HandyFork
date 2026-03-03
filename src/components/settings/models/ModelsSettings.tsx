@@ -4,6 +4,10 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, Globe } from "lucide-react";
 import type { ModelCardStatus } from "@/components/onboarding";
 import { ModelCard } from "@/components/onboarding";
+import { ApiKeyField } from "@/components/settings/PostProcessingSettingsApi/ApiKeyField";
+import { Button } from "@/components/ui/Button";
+import { Dropdown, SettingContainer } from "@/components/ui";
+import { useSettings } from "@/hooks/useSettings";
 import { useModelStore } from "@/stores/modelStore";
 import { LANGUAGES } from "@/lib/constants/languages.ts";
 import type { ModelInfo } from "@/bindings";
@@ -15,10 +19,19 @@ const modelSupportsLanguage = (model: ModelInfo, langCode: string): boolean => {
 
 export const ModelsSettings: React.FC = () => {
   const { t } = useTranslation();
+  const {
+    getSetting,
+    updateGeminiApiKey,
+    updateGeminiModel,
+    fetchGeminiModels,
+    isUpdating,
+    geminiModelOptions,
+  } = useSettings();
   const [switchingModelId, setSwitchingModelId] = useState<string | null>(null);
   const [languageFilter, setLanguageFilter] = useState("all");
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [languageSearch, setLanguageSearch] = useState("");
+  const [geminiApiKeyInput, setGeminiApiKeyInput] = useState("");
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const languageSearchInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -34,6 +47,18 @@ export const ModelsSettings: React.FC = () => {
     selectModel,
     deleteModel,
   } = useModelStore();
+
+  const geminiApiKey = (getSetting("gemini_api_key") as string | undefined) || "";
+  const geminiModel = (getSetting("gemini_model") as string | undefined) || "";
+  const persistedGeminiOptions =
+    (getSetting("gemini_model_options") as string[] | undefined) || [];
+  const effectiveGeminiOptions =
+    geminiModelOptions.length > 0 ? geminiModelOptions : persistedGeminiOptions;
+
+  const isGeminiSelected = useMemo(() => {
+    const selected = models.find((model) => model.id === currentModel);
+    return selected?.engine_type === "Gemini";
+  }, [models, currentModel]);
 
   // click outside handler for language dropdown
   useEffect(() => {
@@ -57,6 +82,10 @@ export const ModelsSettings: React.FC = () => {
     }
   }, [languageDropdownOpen]);
 
+  useEffect(() => {
+    setGeminiApiKeyInput(geminiApiKey);
+  }, [geminiApiKey]);
+
   // filtered languages for dropdown (exclude "auto")
   const filteredLanguages = useMemo(() => {
     return LANGUAGES.filter(
@@ -75,6 +104,7 @@ export const ModelsSettings: React.FC = () => {
   }, [languageFilter, t]);
 
   const getModelStatus = (modelId: string): ModelCardStatus => {
+    const model = models.find((m: ModelInfo) => m.id === modelId);
     if (modelId in extractingModels) {
       return "extracting";
     }
@@ -87,7 +117,9 @@ export const ModelsSettings: React.FC = () => {
     if (modelId === currentModel) {
       return "active";
     }
-    const model = models.find((m: ModelInfo) => m.id === modelId);
+    if (model?.engine_type === "Gemini") {
+      return "available";
+    }
     if (model?.is_downloaded) {
       return "available";
     }
@@ -114,6 +146,11 @@ export const ModelsSettings: React.FC = () => {
   };
 
   const handleModelDownload = async (modelId: string) => {
+    const model = models.find((m: ModelInfo) => m.id === modelId);
+    if (model?.engine_type === "Gemini") {
+      await handleModelSelect(modelId);
+      return;
+    }
     await downloadModel(modelId);
   };
 
@@ -166,6 +203,7 @@ export const ModelsSettings: React.FC = () => {
 
     for (const model of filteredModels) {
       if (
+        model.engine_type === "Gemini" ||
         model.is_custom ||
         model.is_downloaded ||
         model.id in downloadingModels ||
@@ -211,6 +249,65 @@ export const ModelsSettings: React.FC = () => {
           {t("settings.models.description")}
         </p>
       </div>
+
+      {isGeminiSelected && (
+        <div className="rounded-lg border border-mid-gray/20">
+          <SettingContainer
+            title={t("settings.models.gemini.apiKey.title")}
+            description={t("settings.models.gemini.apiKey.description")}
+            descriptionMode="tooltip"
+            layout="horizontal"
+            grouped={true}
+          >
+            <ApiKeyField
+              value={geminiApiKeyInput}
+              onBlur={(value) => {
+                if (value !== geminiApiKey) {
+                  void updateGeminiApiKey(value);
+                }
+              }}
+              disabled={isUpdating("gemini_api_key")}
+              placeholder={t("settings.models.gemini.apiKey.placeholder")}
+              className="min-w-[320px]"
+            />
+          </SettingContainer>
+
+          <SettingContainer
+            title={t("settings.models.gemini.model.title")}
+            description={t("settings.models.gemini.model.description")}
+            descriptionMode="tooltip"
+            layout="horizontal"
+            grouped={true}
+          >
+            <div className="flex items-center gap-2">
+              <Dropdown
+                selectedValue={geminiModel || null}
+                options={effectiveGeminiOptions.map((modelId) => ({
+                  value: modelId,
+                  label: modelId,
+                }))}
+                onSelect={(value) => {
+                  void updateGeminiModel(value);
+                }}
+                placeholder={t("settings.models.gemini.model.placeholder")}
+                disabled={isUpdating("gemini_model")}
+                className="min-w-[280px]"
+              />
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  void fetchGeminiModels();
+                }}
+                disabled={isUpdating("gemini_models_fetch")}
+              >
+                {t("settings.models.gemini.model.fetch")}
+              </Button>
+            </div>
+          </SettingContainer>
+        </div>
+      )}
+
       {filteredModels.length > 0 ? (
         <div className="space-y-6">
           {/* Downloaded Models Section — header always visible so filter stays accessible */}
@@ -319,7 +416,9 @@ export const ModelsSettings: React.FC = () => {
                 status={getModelStatus(model.id)}
                 onSelect={handleModelSelect}
                 onDownload={handleModelDownload}
-                onDelete={handleModelDelete}
+                onDelete={
+                  model.engine_type === "Gemini" ? undefined : handleModelDelete
+                }
                 onCancel={handleModelCancel}
                 downloadProgress={getDownloadProgress(model.id)}
                 downloadSpeed={getDownloadSpeed(model.id)}
@@ -341,7 +440,9 @@ export const ModelsSettings: React.FC = () => {
                   status={getModelStatus(model.id)}
                   onSelect={handleModelSelect}
                   onDownload={handleModelDownload}
-                  onDelete={handleModelDelete}
+                  onDelete={
+                    model.engine_type === "Gemini" ? undefined : handleModelDelete
+                  }
                   onCancel={handleModelCancel}
                   downloadProgress={getDownloadProgress(model.id)}
                   downloadSpeed={getDownloadSpeed(model.id)}

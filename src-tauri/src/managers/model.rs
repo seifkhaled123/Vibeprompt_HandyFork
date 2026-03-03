@@ -24,6 +24,7 @@ pub enum EngineType {
     MoonshineStreaming,
     SenseVoice,
     GigaAM,
+    Gemini,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -400,6 +401,29 @@ impl ModelManager {
 
         // GigaAM v3 supported languages
         let gigaam_languages: Vec<String> = vec!["ru"].into_iter().map(String::from).collect();
+
+        available_models.insert(
+            "gemini".to_string(),
+            ModelInfo {
+                id: "gemini".to_string(),
+                name: "Gemini".to_string(),
+                description: "Cloud model for Arabic-to-English engineering prompts.".to_string(),
+                filename: "gemini-remote".to_string(),
+                url: None,
+                size_mb: 0,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Gemini,
+                accuracy_score: 0.90,
+                speed_score: 0.80,
+                supports_translation: true,
+                is_recommended: false,
+                supported_languages: vec!["ar".to_string(), "en".to_string()],
+                is_custom: false,
+            },
+        );
 
         available_models.insert(
             "gigaam-v3-e2e-ctc".to_string(),

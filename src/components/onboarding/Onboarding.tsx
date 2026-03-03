@@ -11,6 +11,8 @@ interface OnboardingProps {
   onModelSelected: () => void;
 }
 
+const isRemoteGemini = (model?: ModelInfo) => model?.engine_type === "Gemini";
+
 const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
   const { t } = useTranslation();
   const {
@@ -34,7 +36,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
     const stillDownloading = selectedModelId in downloadingModels;
     const stillExtracting = selectedModelId in extractingModels;
 
-    if (model?.is_downloaded && !stillDownloading && !stillExtracting) {
+    if (
+      (model?.is_downloaded || isRemoteGemini(model)) &&
+      !stillDownloading &&
+      !stillExtracting
+    ) {
       // Model is ready — select it and transition
       selectModel(selectedModelId).then((success) => {
         if (success) {
@@ -57,6 +63,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
   const handleDownloadModel = async (modelId: string) => {
     setSelectedModelId(modelId);
 
+    const model = models.find((m) => m.id === modelId);
+    if (isRemoteGemini(model)) {
+      const success = await selectModel(modelId);
+      if (success) {
+        onModelSelected();
+      } else {
+        toast.error(t("onboarding.errors.selectModel"));
+      }
+      setSelectedModelId(null);
+      return;
+    }
+
     const success = await downloadModel(modelId);
     if (!success) {
       toast.error(t("onboarding.downloadFailed"));
@@ -67,6 +85,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
   const getModelStatus = (modelId: string): ModelCardStatus => {
     if (modelId in extractingModels) return "extracting";
     if (modelId in downloadingModels) return "downloading";
+    const model = models.find((m) => m.id === modelId);
+    if (isRemoteGemini(model)) return "available";
     return "downloadable";
   };
 

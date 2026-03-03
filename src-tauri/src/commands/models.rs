@@ -71,14 +71,20 @@ pub async fn set_active_model(
         .get_model_info(&model_id)
         .ok_or_else(|| format!("Model not found: {}", model_id))?;
 
-    if !model_info.is_downloaded {
+    let is_remote_gemini = matches!(model_info.engine_type, crate::managers::model::EngineType::Gemini);
+
+    if !is_remote_gemini && !model_info.is_downloaded {
         return Err(format!("Model not downloaded: {}", model_id));
     }
 
-    // Load the model in the transcription manager
-    transcription_manager
-        .load_model(&model_id)
-        .map_err(|e| e.to_string())?;
+    if is_remote_gemini {
+        let _ = transcription_manager.unload_model();
+    } else {
+        // Load the model in the transcription manager
+        transcription_manager
+            .load_model(&model_id)
+            .map_err(|e| e.to_string())?;
+    }
 
     // Update settings
     let mut settings = get_settings(&app_handle);

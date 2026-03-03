@@ -6,6 +6,7 @@ pub mod audio_toolkit;
 pub mod cli;
 mod clipboard;
 mod commands;
+mod gemini_client;
 mod helpers;
 mod input;
 mod llm_client;
@@ -282,6 +283,9 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_post_process_base_url_setting,
         shortcut::change_post_process_api_key_setting,
         shortcut::change_post_process_model_setting,
+        shortcut::change_gemini_api_key_setting,
+        shortcut::change_gemini_model_setting,
+        shortcut::fetch_gemini_models,
         shortcut::set_post_process_provider,
         shortcut::fetch_post_process_models,
         shortcut::add_post_process_prompt,

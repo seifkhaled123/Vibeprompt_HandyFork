@@ -8,6 +8,7 @@ use tauri_plugin_store::StoreExt;
 
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
+pub const GEMINI_DEFAULT_MODEL_ID: &str = "gemini-2.0-flash";
 
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "lowercase")]
@@ -293,6 +294,12 @@ pub struct AppSettings {
     pub update_checks_enabled: bool,
     #[serde(default = "default_model")]
     pub selected_model: String,
+    #[serde(default)]
+    pub gemini_api_key: String,
+    #[serde(default = "default_gemini_model")]
+    pub gemini_model: String,
+    #[serde(default)]
+    pub gemini_model_options: Vec<String>,
     #[serde(default = "default_always_on_microphone")]
     pub always_on_microphone: bool,
     #[serde(default)]
@@ -364,6 +371,10 @@ pub struct AppSettings {
 
 fn default_model() -> String {
     "".to_string()
+}
+
+fn default_gemini_model() -> String {
+    GEMINI_DEFAULT_MODEL_ID.to_string()
 }
 
 fn default_always_on_microphone() -> bool {
@@ -690,6 +701,9 @@ pub fn get_default_settings() -> AppSettings {
         autostart_enabled: default_autostart_enabled(),
         update_checks_enabled: default_update_checks_enabled(),
         selected_model: "".to_string(),
+        gemini_api_key: String::new(),
+        gemini_model: default_gemini_model(),
+        gemini_model_options: Vec::new(),
         always_on_microphone: false,
         selected_microphone: None,
         clamshell_microphone: None,
