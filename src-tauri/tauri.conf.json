@@ -70,7 +70,7 @@
       }
     },
     "windows": {
-      "signCommand": "if \"%ENABLE_WINDOWS_SIGNING%\"==\"1\" (trusted-signing-cli -e https://eus.codesigning.azure.net/ -a CJ-Signing -c cjpais-dev -d Handy %1) else (echo Skipping Windows trusted signing)"
+      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net/ -a CJ-Signing -c cjpais-dev -d Handy %1"
     }
   },
   "plugins": {

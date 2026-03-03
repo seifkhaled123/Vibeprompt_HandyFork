@@ -263,6 +263,17 @@ jobs:
           fi
           echo "platform=${patched_platform}" >> $GITHUB_OUTPUT
 
+      - name: Disable Windows signing for unsigned builds
+        if: contains(inputs.platform, 'windows') && !inputs.sign-binaries
+        shell: pwsh
+        run: |
+          $configPath = "src-tauri/tauri.conf.json"
+          $config = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+          if ($null -ne $config.bundle -and $null -ne $config.bundle.windows) {
+            $config.bundle.windows.PSObject.Properties.Remove('signCommand')
+          }
+          $config | ConvertTo-Json -Depth 100 | Set-Content -Path $configPath -Encoding utf8
+
       - name: Build with Tauri
         uses: tauri-apps/tauri-action@v0
         env:
@@ -279,7 +290,6 @@ jobs:
           AZURE_TENANT_ID: ${{ inputs.sign-binaries && secrets.AZURE_TENANT_ID || '' }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign-binaries && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
-          ENABLE_WINDOWS_SIGNING: ${{ inputs.sign-binaries && '1' || '0' }}
           WHISPER_NO_AVX: ${{ contains(inputs.platform, 'ubuntu') && !contains(inputs.platform, 'arm') && 'ON' || '' }}
           WHISPER_NO_AVX2: ${{ contains(inputs.platform, 'ubuntu') && !contains(inputs.platform, 'arm') && 'ON' || '' }}
         with:
