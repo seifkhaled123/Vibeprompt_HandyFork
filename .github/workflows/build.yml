@@ -269,6 +269,9 @@ jobs:
         run: |
           $configPath = "src-tauri/tauri.conf.json"
           $config = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+          if ($null -ne $config.bundle) {
+            $config.bundle.createUpdaterArtifacts = $false
+          }
           if ($null -ne $config.bundle -and $null -ne $config.bundle.windows) {
             $config.bundle.windows.PSObject.Properties.Remove('signCommand')
           }
