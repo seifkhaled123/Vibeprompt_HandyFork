@@ -1,0 +1,26 @@
+name: "Linux DEB Test Build"
+
+on: workflow_dispatch
+
+jobs:
+  build-linux:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "ubuntu-24.04"
+            args: "--bundles deb"
+            target: "x86_64-unknown-linux-gnu"
+
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: ${{ matrix.platform }}
+      target: ${{ matrix.target }}
+      build-args: ${{ matrix.args }}
+      sign-binaries: false
+      asset-prefix: "handy-ubuntu-deb-test"
+      upload-artifacts: true
+      is-debug-build: ${{ contains(matrix.args, '--debug') }}
+    secrets: inherit
