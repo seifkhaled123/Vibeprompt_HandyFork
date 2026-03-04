@@ -4,23 +4,63 @@ on: workflow_dispatch
 
 jobs:
   build-linux:
+    runs-on: ubuntu-24.04
     permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: "ubuntu-24.04"
-            args: "--bundles deb"
-            target: "x86_64-unknown-linux-gnu"
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    uses: ./.github/workflows/build.yml
-    with:
-      platform: ${{ matrix.platform }}
-      target: ${{ matrix.target }}
-      build-args: ${{ matrix.args }}
-      sign-binaries: false
-      asset-prefix: "handy-ubuntu-deb-test"
-      upload-artifacts: true
-      is-debug-build: ${{ contains(matrix.args, '--debug') }}
-    secrets: inherit
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          key: ubuntu-24.04-x86_64-unknown-linux-gnu-deb
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libasound2-dev \
+            libopenblas-dev \
+            libx11-dev \
+            libxtst-dev \
+            libxrandr-dev \
+            libgtk-layer-shell0 \
+            libgtk-layer-shell-dev
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Disable updater artifacts for test build
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          config_path = Path("src-tauri/tauri.conf.json")
+          config = json.loads(config_path.read_text(encoding="utf-8"))
+          config.setdefault("bundle", {})["createUpdaterArtifacts"] = False
+          config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+          print("Set bundle.createUpdaterArtifacts=false for this CI run")
+          PY
+
+      - name: Build DEB bundle
+        run: bun run tauri build --bundles deb
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: handy-ubuntu-deb-test
+          path: src-tauri/target/release/bundle/deb/*.deb
+          retention-days: 30
